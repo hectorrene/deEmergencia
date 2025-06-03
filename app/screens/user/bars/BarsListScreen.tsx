@@ -122,18 +122,6 @@ const BarsListScreen: React.FC<BarsListScreenProps> = ({ navigation }) => {
     navigation.navigate('BarDetails', { barId });
   };
 
-  const renderStars = (rating: number) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <Text key={i} style={[styles.star, { color: i <= rating ? colors.star : colors.starEmpty }]}>
-          ★
-        </Text>
-      );
-    }
-    return stars;
-  };
-
   const getCardWidth = () => {
     if (isDesktop) {
       return (width - 64) / 3 - 16; // 3 columns on desktop
@@ -243,26 +231,12 @@ const BarsListScreen: React.FC<BarsListScreenProps> = ({ navigation }) => {
                   resizeMode="cover"
                 />
                 <View style={styles.imageOverlay}>
-                  <View style={styles.ratingBadge}>
-                    <Icon name="star" size={14} color={colors.star} />
-                    <Text style={styles.ratingBadgeText}>{bar.ratingAverage.toFixed(1)}</Text>
-                  </View>
                 </View>
               </View>
 
               {/* Bar Info */}
               <View style={styles.barInfoContainer}>
                 <Text style={styles.barName} numberOfLines={1}>{bar.name}</Text>
-                
-                {/* Rating */}
-                <View style={styles.ratingContainer}>
-                  <View style={styles.starsContainer}>
-                    {renderStars(Math.round(bar.ratingAverage))}
-                  </View>
-                  <Text style={styles.ratingText}>
-                    ({bar.ratingQuantity})
-                  </Text>
-                </View>
 
                 {/* Tags */}
                 {bar.tags.length > 0 && (

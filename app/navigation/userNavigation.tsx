@@ -143,7 +143,6 @@ function LoadingScreen() {
 // Auth Stack Navigator
 const AuthStack = createStackNavigator<AuthStackParamList>();
 function AuthNavigator() {
-  console.log('🔓 AuthNavigator: Rendering auth stack');
   
   return (
     <AuthStack.Navigator

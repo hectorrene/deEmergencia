@@ -48,7 +48,6 @@ const colors = {
 
 interface EditableUser {
   name: string;
-  accountType: 'business' | 'user';
   currentPassword: string;
   password: string;
   confirmPassword: string;
@@ -66,7 +65,6 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
   
   const [formData, setFormData] = useState<EditableUser>({
     name: '',
-    accountType: 'user',
     currentPassword: '',
     password: '',
     confirmPassword: '',
@@ -84,7 +82,6 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
     if (user) {
       setFormData({
         name: user.name || '',
-        accountType: user.accountType || 'user',
         currentPassword: '',
         password: '',
         confirmPassword: '',
@@ -101,6 +98,14 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
       newErrors.name = 'El nombre es requerido';
     } else if (formData.name.trim().length < 2) {
       newErrors.name = 'El nombre debe tener al menos 2 caracteres';
+    }
+
+    // Validar URL de foto (opcional, pero si se proporciona debe ser válida)
+    if (formData.photo && formData.photo.trim()) {
+      const urlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
+      if (!urlPattern.test(formData.photo.trim())) {
+        newErrors.photo = 'Ingresa una URL válida de imagen (jpg, png, gif, webp)';
+      }
     }
 
     // Validar contraseña (solo si se está intentando cambiar)
@@ -138,7 +143,6 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
       // Actualizar perfil básico
       const profileData = {
         name: formData.name,
-        accountType: formData.accountType,
         photo: formData.photo,
       };
 
@@ -200,20 +204,9 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
         { text: 'Cámara', onPress: () => console.log('Open camera') },
         { text: 'Galería', onPress: () => console.log('Open gallery') },
         { 
-          text: 'URL personalizada', 
-          onPress: () => {
-            Alert.prompt(
-              'URL de imagen',
-              'Ingresa la URL de tu foto:',
-              (text) => {
-                if (text) {
-                  handleInputChange('photo', text);
-                }
-              },
-              'plain-text',
-              formData.photo
-            );
-          }
+          text: 'Limpiar foto', 
+          onPress: () => handleInputChange('photo', ''),
+          style: 'destructive'
         },
       ]
     );
@@ -357,50 +350,29 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => 
                 {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
               </View>
 
-              {/* Account Type Field */}
+              {/* Photo URL Field */}
               <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Tipo de cuenta</Text>
-                <View style={styles.accountTypeContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.accountTypeOption,
-                      formData.accountType === 'user' && styles.accountTypeOptionSelected
-                    ]}
-                    onPress={() => handleInputChange('accountType', 'user')}
-                  >
-                    <Icon 
-                      name="person" 
-                      size={20} 
-                      color={formData.accountType === 'user' ? colors.text : colors.textMuted} 
-                    />
-                    <Text style={[
-                      styles.accountTypeText,
-                      formData.accountType === 'user' && styles.accountTypeTextSelected
-                    ]}>
-                      Usuario
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.accountTypeOption,
-                      formData.accountType === 'business' && styles.accountTypeOptionSelected
-                    ]}
-                    onPress={() => handleInputChange('accountType', 'business')}
-                  >
-                    <Icon 
-                      name="business" 
-                      size={20} 
-                      color={formData.accountType === 'business' ? colors.text : colors.textMuted} 
-                    />
-                    <Text style={[
-                      styles.accountTypeText,
-                      formData.accountType === 'business' && styles.accountTypeTextSelected
-                    ]}>
-                      Negocio
-                    </Text>
-                  </TouchableOpacity>
+                <Text style={styles.fieldLabel}>URL de foto de perfil</Text>
+                <View style={[
+                  styles.inputContainer,
+                  focusedField === 'photo' && styles.inputContainerFocused,
+                  errors.photo && styles.inputContainerError
+                ]}>
+                  <Icon name="image" size={20} color={colors.textMuted} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    value={formData.photo}
+                    onChangeText={(text) => handleInputChange('photo', text)}
+                    placeholder="https://ejemplo.com/mi-foto.jpg"
+                    placeholderTextColor={colors.textMuted}
+                    onFocus={() => setFocusedField('photo')}
+                    onBlur={() => setFocusedField(null)}
+                    autoCapitalize="none"
+                    keyboardType="url"
+                  />
                 </View>
+                {errors.photo && <Text style={styles.errorText}>{errors.photo}</Text>}
+                <Text style={styles.fieldHint}>Ingresa la URL de tu foto de perfil</Text>
               </View>
 
               {/* Password Change Section */}
@@ -677,36 +649,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: colors.textMuted,
-  },
-  accountTypeContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  accountTypeOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 8,
-  },
-  accountTypeOptionSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  accountTypeText: {
-    fontSize: 16,
-    color: colors.textMuted,
-    fontWeight: '500',
-  },
-  accountTypeTextSelected: {
-    color: colors.text,
-    fontWeight: '600',
   },
   errorText: {
     fontSize: 14,

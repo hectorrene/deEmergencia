@@ -2,7 +2,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator, Alert, Dimensions, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View
+  ActivityIndicator, Alert, Dimensions, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -89,7 +89,7 @@ const BarListScreen: React.FC = () => {
     setRefreshing(false);
   };
 
-  // Filter bars based on search query
+  // Search bar
   React.useEffect(() => {
     if (searchQuery.trim() === '') {
       setFilteredBars(bars);
@@ -109,18 +109,6 @@ const handleBarPress = (bar: Bar) => {
 
   const handleCreateBar = () => {
     navigation.navigate('CreateBarScreen');
-  };
-
-  const renderStars = (rating: number) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <Text key={i} style={[styles.star, { color: i <= rating ? colors.star : colors.starEmpty }]}>
-          ★
-        </Text>
-      );
-    }
-    return stars;
   };
 
   const getCardWidth = () => {
@@ -284,17 +272,7 @@ const handleBarPress = (bar: Bar) => {
               <View style={styles.barInfoContainer}>
                 <Text style={styles.barName} numberOfLines={1}>{bar.name}</Text>
                 
-                {/* Rating */}
-                {bar.ratingAverage && (
-                  <View style={styles.ratingContainer}>
-                    <View style={styles.starsContainer}>
-                      {renderStars(Math.round(bar.ratingAverage))}
-                    </View>
-                    <Text style={styles.ratingText}>
-                      ({bar.ratingQuantity || 0})
-                    </Text>
-                  </View>
-                )}
+
 
                 {/* Tags/Types */}
                 {bar.type && bar.type.length > 0 && (

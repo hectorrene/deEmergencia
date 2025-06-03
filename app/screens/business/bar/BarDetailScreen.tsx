@@ -589,27 +589,12 @@ const BarDetailsScreen: React.FC<BarDetailsScreenProps> = ({ route, navigation }
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.ratingOverlay}>
-            <View style={styles.ratingBadge}>
-              <Icon name="star" size={16} color={colors.star} />
-              <Text style={styles.ratingBadgeText}>{bar.ratingAverage.toFixed(1)}</Text>
-            </View>
-          </View>
         </View>
 
         {/* Bar Info */}
         <View style={styles.infoContainer}>
           <Text style={styles.barName}>{bar.name}</Text>
           
-          {/* Rating */}
-          <View style={styles.ratingContainer}>
-            <View style={styles.starsContainer}>
-              {renderStars(Math.round(bar.ratingAverage || 0), 18)}
-            </View>
-            <Text style={styles.ratingText}>
-              {(bar.ratingAverage || 0).toFixed(1)} • {bar.ratingQuantity || 0} review{bar.ratingQuantity !== 1 ? 's' : ''}
-            </Text>
-          </View>
 
           {/* Tags */}
           {bar.tags.length > 0 && (
