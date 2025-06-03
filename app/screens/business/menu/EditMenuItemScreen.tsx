@@ -2,16 +2,17 @@ import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { BusinessStackParamList } from '../../../navigation/userNavigation';
@@ -35,6 +36,7 @@ const colors = {
   success: '#10b981',
   warning: '#f59e0b',
   error: '#ef4444',
+  overlay: 'rgba(0, 0, 0, 0.8)',
 };
 
 type EditMenuItemScreenRouteProp = RouteProp<BusinessStackParamList, 'EditMenuItemScreen'>;
@@ -70,10 +72,13 @@ const EditMenuItemScreen: React.FC<Props> = ({ route, navigation }) => {
     alcoholPercentage: '0',
     volume: '0',
   });
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [updatedItemName, setUpdatedItemName] = useState('');
 
   useEffect(() => {
     loadMenuItemData();
   }, []);
+
   const loadMenuItemData = async () => {
     try {
       setLoading(true);
@@ -171,21 +176,9 @@ const EditMenuItemScreen: React.FC<Props> = ({ route, navigation }) => {
       const response = await BusinessService.updateMenuItem(barId, itemId, updateData);
       
       if (response.data && response.data.success) {
-        Alert.alert(
-          'Success',
-          'Menu item updated successfully',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.navigate('BusinessDetails', { 
-                  barId, 
-                  barName 
-                });
-              }
-            }
-          ]
-        );
+        setUpdatedItemName(itemData.name.trim());
+        // Show success modal for all platforms
+        setShowSuccessModal(true);
       } else {
         Alert.alert('Error', 'Failed to update menu item');
       }
@@ -195,6 +188,17 @@ const EditMenuItemScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    navigation.goBack();
+  };
+
+  const navigateToMainPage = () => {
+    setShowSuccessModal(false);
+    // Navigate to the main business dashboard or menu management screen
+    navigation.navigate('BusinessDashboard'); // Adjust this route name as needed
   };
 
   const renderTypeOption = (type: 'alcohol' | 'comida' | 'bebida', label: string, icon: string) => (
@@ -216,6 +220,48 @@ const EditMenuItemScreen: React.FC<Props> = ({ route, navigation }) => {
     </TouchableOpacity>
   );
 
+  // Success Modal Component
+  const SuccessModal = () => (
+    <Modal
+      visible={showSuccessModal}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={handleSuccessModalClose}
+    >
+      <View style={styles.successOverlay}>
+        <View style={styles.successModal}>
+          <View style={styles.successIconContainer}>
+            <Icon name="check-circle" size={64} color={colors.success} />
+          </View>
+          
+          <Text style={styles.successTitle}>Item Modified Successfully!</Text>
+          
+          <Text style={styles.successMessage}>
+            "{updatedItemName}" has been updated in {barName}'s menu.
+          </Text>
+          
+          <View style={styles.successButtons}>
+            <TouchableOpacity
+              style={[styles.successButton, styles.successBackButton]}
+              onPress={handleSuccessModalClose}
+            >
+              <Icon name="arrow-back" size={20} color={colors.text} />
+              <Text style={styles.backButtonText}>Back to Menu</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.successButton, styles.mainPageButton]}
+              onPress={navigateToMainPage}
+            >
+              <Icon name="home" size={20} color={colors.text} />
+              <Text style={styles.mainPageButtonText}>Main Page</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -226,154 +272,159 @@ const EditMenuItemScreen: React.FC<Props> = ({ route, navigation }) => {
   }
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Menu Item</Text>
-        <TouchableOpacity 
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color={colors.text} />
-          ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Bar Info */}
-        <View style={styles.barInfoContainer}>
-          <Text style={styles.barInfoLabel}>Editing item for:</Text>
-          <Text style={styles.barName}>{barName}</Text>
-          <Text style={styles.itemName}>{itemName}</Text>
+    <>
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Edit Menu Item</Text>
+          <TouchableOpacity 
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={colors.text} />
+            ) : (
+              <Text style={styles.saveButtonText}>Save</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Item Type */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Item Type</Text>
-          <View style={styles.typeOptionsContainer}>
-            {renderTypeOption('comida', 'Food', 'restaurant')}
-            {renderTypeOption('bebida', 'Drink', 'local-cafe')}
-            {renderTypeOption('alcohol', 'Alcohol', 'wine-bar')}
-          </View>
-        </View>
-
-        {/* Basic Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basic Information</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Item Name *</Text>
-            <TextInput
-              style={styles.input}
-              value={itemData.name}
-              onChangeText={(text) => setItemData(prev => ({ ...prev, name: text }))}
-              placeholder="Enter item name"
-              placeholderTextColor={colors.textMuted}
-              maxLength={100}
-            />
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Bar Info */}
+          <View style={styles.barInfoContainer}>
+            <Text style={styles.barInfoLabel}>Editing item for:</Text>
+            <Text style={styles.barName}>{barName}</Text>
+            <Text style={styles.itemName}>{itemName}</Text>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description *</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={itemData.description}
-              onChangeText={(text) => setItemData(prev => ({ ...prev, description: text }))}
-              placeholder="Describe the item..."
-              placeholderTextColor={colors.textMuted}
-              multiline
-              numberOfLines={4}
-              maxLength={500}
-            />
-            <Text style={styles.charCount}>
-              {itemData.description.length}/500
-            </Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Price *</Text>
-            <TextInput
-              style={styles.input}
-              value={itemData.price}
-              onChangeText={(text) => setItemData(prev => ({ ...prev, price: text }))}
-              placeholder="0.00"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="decimal-pad"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Photo URL</Text>
-            <TextInput
-              style={styles.input}
-              value={itemData.photo}
-              onChangeText={(text) => setItemData(prev => ({ ...prev, photo: text }))}
-              placeholder="https://example.com/photo.jpg"
-              placeholderTextColor={colors.textMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-        </View>
-
-        {/* Alcohol-specific fields */}
-        {itemData.type === 'alcohol' && (
+          {/* Item Type */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Alcohol Details</Text>
+            <Text style={styles.sectionTitle}>Item Type</Text>
+            <View style={styles.typeOptionsContainer}>
+              {renderTypeOption('comida', 'Food', 'restaurant')}
+              {renderTypeOption('bebida', 'Drink', 'local-cafe')}
+              {renderTypeOption('alcohol', 'Alcohol', 'wine-bar')}
+            </View>
+          </View>
+
+          {/* Basic Information */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Basic Information</Text>
             
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Alcohol Percentage *</Text>
+              <Text style={styles.label}>Item Name *</Text>
               <TextInput
                 style={styles.input}
-                value={itemData.alcoholPercentage}
-                onChangeText={(text) => setItemData(prev => ({ ...prev, alcoholPercentage: text }))}
-                placeholder="0-100"
+                value={itemData.name}
+                onChangeText={(text) => setItemData(prev => ({ ...prev, name: text }))}
+                placeholder="Enter item name"
+                placeholderTextColor={colors.textMuted}
+                maxLength={100}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Description *</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={itemData.description}
+                onChangeText={(text) => setItemData(prev => ({ ...prev, description: text }))}
+                placeholder="Describe the item..."
+                placeholderTextColor={colors.textMuted}
+                multiline
+                numberOfLines={4}
+                maxLength={500}
+              />
+              <Text style={styles.charCount}>
+                {itemData.description.length}/500
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Price *</Text>
+              <TextInput
+                style={styles.input}
+                value={itemData.price}
+                onChangeText={(text) => setItemData(prev => ({ ...prev, price: text }))}
+                placeholder="0.00"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Photo URL</Text>
+              <TextInput
+                style={styles.input}
+                value={itemData.photo}
+                onChangeText={(text) => setItemData(prev => ({ ...prev, photo: text }))}
+                placeholder="https://example.com/photo.jpg"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
+
+          {/* Alcohol-specific fields */}
+          {itemData.type === 'alcohol' && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Alcohol Details</Text>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Alcohol Percentage *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={itemData.alcoholPercentage}
+                  onChangeText={(text) => setItemData(prev => ({ ...prev, alcoholPercentage: text }))}
+                  placeholder="0-100"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="decimal-pad"
+                />
+                <Text style={styles.helperText}>
+                  Required for alcoholic beverages (0-100%)
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Additional Details */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Additional Details</Text>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Volume (ml/g)</Text>
+              <TextInput
+                style={styles.input}
+                value={itemData.volume}
+                onChangeText={(text) => setItemData(prev => ({ ...prev, volume: text }))}
+                placeholder="Optional"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
               />
               <Text style={styles.helperText}>
-                Required for alcoholic beverages (0-100%)
+                Volume in milliliters for drinks or grams for food
               </Text>
             </View>
           </View>
-        )}
 
-        {/* Additional Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Additional Details</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Volume (ml/g)</Text>
-            <TextInput
-              style={styles.input}
-              value={itemData.volume}
-              onChangeText={(text) => setItemData(prev => ({ ...prev, volume: text }))}
-              placeholder="Optional"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="decimal-pad"
-            />
-            <Text style={styles.helperText}>
-              Volume in milliliters for drinks or grams for food
-            </Text>
-          </View>
-        </View>
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      {/* Success Modal */}
+      <SuccessModal />
+    </>
   );
 };
 
@@ -530,6 +581,76 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 50,
+  },
+  // Success Modal Styles
+  successOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  successModal: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 32,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  successButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  successButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minHeight: 44,
+  },
+  successBackButton: {
+    backgroundColor: colors.surfaceVariant,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 8,
+  },
+  mainPageButton: {
+    backgroundColor: colors.primary,
+  },
+  mainPageButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 8,
   },
 });
 

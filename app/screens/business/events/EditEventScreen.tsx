@@ -4,6 +4,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -40,6 +41,7 @@ const colors = {
   error: '#ef4444',
   inputBackground: '#27272a',
   modalBackground: 'rgba(0, 0, 0, 0.8)',
+  overlay: 'rgba(0, 0, 0, 0.8)',
 };
 
 type EditEventScreenRouteProp = RouteProp<BusinessStackParamList, 'EditEventScreen'>;
@@ -173,7 +175,8 @@ const EditEventScreen: React.FC<Props> = ({ route, navigation }) => {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   // Success modal state
-  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [updatedEventName, setUpdatedEventName] = useState('');
 
   useEffect(() => {
     loadEventData();
@@ -262,7 +265,7 @@ const EditEventScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleSave = async () => {
     const validationError = validateForm();
     if (validationError) {
-      console.error('Validation error:', validationError);
+      Alert.alert('Error', validationError);
       return;
     }
 
@@ -282,48 +285,68 @@ const EditEventScreen: React.FC<Props> = ({ route, navigation }) => {
       const response = await BusinessService.updateEvent(barId, eventId, updateData);
       
       if (response.data && response.data.success) {
-        setSuccessModalVisible(true);
+        setUpdatedEventName(eventData.name.trim());
+        
+        // For web/desktop, show custom success modal
+        if (Platform.OS === 'web') {
+          setShowSuccessModal(true);
+        } else {
+          // For mobile platforms, use native Alert
+          Alert.alert(
+            'Success',
+            'Event updated successfully',
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.goBack(),
+              },
+            ]
+          );
+        }
       }
     } catch (error) {
       console.error('Error updating event:', error);
+      Alert.alert('Error', 'Failed to update event. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleSuccessModalClose = () => {
-    setSuccessModalVisible(false);
-    navigation.navigate('BusinessDetails', { 
-      barId, 
-      barName 
-    });
+    setShowSuccessModal(false);
+    navigation.goBack();
   };
 
   const formatDateTime = (date: Date): string => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
   };
 
+  // Success Modal Component for Web/Desktop
   const SuccessModal = () => (
     <Modal
-      animationType="fade"
+      visible={showSuccessModal}
       transparent={true}
-      visible={successModalVisible}
+      animationType="fade"
       onRequestClose={handleSuccessModalClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Icon name="check-circle" size={48} color={colors.success} />
-            <Text style={styles.modalTitle}>Success!</Text>
+      <View style={styles.successOverlay}>
+        <View style={styles.successModal}>
+          <View style={styles.successIconContainer}>
+            <Icon name="check-circle" size={64} color={colors.success} />
           </View>
-          <Text style={styles.modalMessage}>
-            Event "{eventData.name}" has been updated successfully.
+          
+          <Text style={styles.successTitle}>Event Updated Successfully!</Text>
+          
+          <Text style={styles.successMessage}>
+            "{updatedEventName}" has been updated for {barName}.
           </Text>
-          <TouchableOpacity 
-            style={styles.modalSuccessButton}
+          
+          <TouchableOpacity
+            style={styles.successButton}
             onPress={handleSuccessModalClose}
           >
-            <Text style={styles.modalSuccessText}>Continue</Text>
+            <Icon name="arrow-back" size={20} color={colors.text} />
+            <Text style={styles.successButtonText}>Return to Previous Screen</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -578,6 +601,7 @@ const EditEventScreen: React.FC<Props> = ({ route, navigation }) => {
         onCancel={() => setShowEndTimePicker(false)}
       />
 
+      {/* Success Modal for Web/Desktop */}
       <SuccessModal />
     </KeyboardAvoidingView>
   );
@@ -699,7 +723,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: 4,
   },
-  // New date/time picker styles
+  // Date/time picker styles
   dateTimeContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -728,46 +752,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.modalBackground,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginTop: 12,
-  },
-  modalMessage: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  modalSuccessButton: {
-    backgroundColor: colors.success,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    minWidth: 120,
-  },
-  modalSuccessText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
   },
   // Web DatePicker Modal styles
   webDatePickerContainer: {
@@ -818,6 +802,57 @@ const styles = StyleSheet.create({
   },
   webDatePickerConfirmText: {
     color: colors.text,
+  },
+  // Success Modal Styles
+  successOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  successModal: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 32,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  successButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    minWidth: 200,
+  },
+  successButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 8,
   },
 });
 

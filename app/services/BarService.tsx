@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosResponse } from 'axios';
 import { Platform } from 'react-native';
 import { HandleLoginError } from "../../helpers/ErrorHandler";
-import { authService } from './AuthService'; // Cambiar a la instancia, no la clase
+import { authService } from './AuthService';
 
 const API_BASE_URL = Platform.select({
   ios: 'http://192.168.100.191:3000/api',
@@ -28,7 +28,7 @@ class BarService {
     );
   }
 
-  // Obtener el conteo de reviews de un usuario
+  // Jala el conteo de reviews de un usuario
   async getUserReviewCount(userId?: string): Promise<AxiosResponse> {
     try {
       const targetUserId = userId || authService.getCurrentUser()?._id;
@@ -134,79 +134,118 @@ class BarService {
     }
   }
 
-  // Crear una review para un bar
-async createReview(barId: string, reviewData: {
-  rating: number;
-  comment: string;
-  photos?: string[];
-}): Promise<AxiosResponse> {
-  try {
-    return await this.api.post(`/bars/${barId}/reviews`, reviewData);
-  } catch (error) {
-    HandleLoginError(error);
-    throw error;
+// crea una review para el bar
+  async createReview(barId: string, reviewData: {
+    rating: number;
+    comment: string;
+    photos?: string[];
+  }): Promise<AxiosResponse> {
+    const userId = authService.getCurrentUser()?._id;
+    if (!userId) {
+      console.log('ERROR: User not authenticated');
+      throw new Error('User not authenticated');
+    }
+    try {
+      const reviewDataWithUser = {
+        ...reviewData,
+        userId: userId
+      };
+      const response = await this.api.post(`/bars/${barId}/reviews`, reviewDataWithUser);
+      return response;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message || error.message;
+        throw new Error(message);
+      }
+      console.log('Non-axios error:', error);
+      HandleLoginError(error);
+      throw error;
+    }
   }
-}
 
-// Actualizar una review
-async updateReview(reviewId: string, reviewData: {
-  rating?: number;
-  comment?: string;
-  photos?: string[];
-}): Promise<AxiosResponse> {
-  try {
-    return await this.api.put(`/reviews/${reviewId}`, reviewData);
-  } catch (error) {
-    HandleLoginError(error);
-    throw error;
-  }
-}
-
-// Eliminar una review
-async deleteReview(reviewId: string): Promise<AxiosResponse> {
-  try {
-    return await this.api.delete(`/reviews/${reviewId}`);
-  } catch (error) {
-    HandleLoginError(error);
-    throw error;
-  }
-}
-
-// Verificar si el usuario ya hizo una review para un bar
-async checkUserReview(barId: string): Promise<{hasReviewed: boolean, review?: any}> {
-  const userId = authService.getCurrentUser()?._id;
-  if (!userId) return { hasReviewed: false };
-  
-  try {
-    const response = await this.api.get(`/users/${userId}/reviews/${barId}/check`);
-    return response.data;
-  } catch (error) {
-    return { hasReviewed: false };
-  }
-}
-
-// Obtener estadísticas de reviews de un bar
-async getBarReviewStats(barId: string): Promise<AxiosResponse> {
-  try {
-    return await this.api.get(`/bars/${barId}/reviews/stats`);
-  } catch (error) {
-    HandleLoginError(error);
-    throw error;
-  }
-}
-
-// Obtener reviews de un usuario
-async getUserReviews(userId?: string): Promise<AxiosResponse> {
-  try {
-    const targetUserId = userId || authService.getCurrentUser()?._id;
-    if (!targetUserId) throw new Error('User not authenticated');
+  // Jala una review y actualiza su información
+  async updateReview(reviewId: string, reviewData: {
+    rating?: number;
+    comment?: string;
+    photos?: string[];
+  }): Promise<AxiosResponse> {
+    const userId = authService.getCurrentUser()?._id;
+    if (!userId) {
+      console.log('ERROR: User not authenticated');
+      throw new Error('User not authenticated');
+    }
     
-    return await this.api.get(`/users/${targetUserId}/reviews`);
-  } catch (error) {
-    HandleLoginError(error);
-    throw error;
+    try {
+      const response = await this.api.put(`/users/${userId}/reviews/${reviewId}`, reviewData);
+      return response;
+    } catch (error) {
+      console.log('=== UPDATE REVIEW ERROR ===');
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message || error.message;
+        throw new Error(message);
+      }
+      console.log('Non-axios error:', error);
+      HandleLoginError(error);
+      throw error;
+    }
   }
-}
+
+  // Jala una review y la elimina
+  async deleteReview(reviewId: string): Promise<AxiosResponse> {
+    const userId = authService.getCurrentUser()?._id;
+    if (!userId) {
+      console.log('ERROR: User not authenticated');
+      throw new Error('User not authenticated');
+    }
+    
+    try {
+      const response = await this.api.delete(`/users/${userId}/reviews/${reviewId}`);
+      return response;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message || error.message;
+        throw new Error(message);
+      }
+      console.log('Non-axios error:', error);
+      HandleLoginError(error);
+      throw error;
+    }
+  }
+
+  // Verifica si el usuario ya hizo una review para un bar específico
+  async checkUserReview(barId: string): Promise<{hasReviewed: boolean, review?: any}> {
+    const userId = authService.getCurrentUser()?._id;
+    if (!userId) return { hasReviewed: false };
+    try {
+      const response = await this.api.get(`/users/${userId}/reviews/${barId}/check`);
+      return response.data;
+    } catch (error) {
+      return { hasReviewed: false };
+    }
+  }  
+
+// Jala las estadísticas de reviews de un bar por su id
+  async getBarReviewStats(barId: string): Promise<AxiosResponse> {
+    try {
+      return await this.api.get(`/bars/${barId}/reviews/stats`);
+    } catch (error) {
+      HandleLoginError(error);
+      throw error;
+    }
+  } 
+
+  // Jala las reviews de un usuario por su id
+  async getUserReviews(userId?: string): Promise<AxiosResponse> {
+    try {
+      const targetUserId = userId || authService.getCurrentUser()?._id;
+      if (!targetUserId) throw new Error('User not authenticated');
+    
+      return await this.api.get(`/users/${targetUserId}/reviews`);
+    } catch (error) {
+      HandleLoginError(error);
+      throw error;
+    }
+  }
 
   // jala todos los eventos 
   async getAllEvents(): Promise<AxiosResponse> {
@@ -218,7 +257,7 @@ async getUserReviews(userId?: string): Promise<AxiosResponse> {
     }
   }
 
-  // evento por id
+  // Jala un evento por su id
   async getEventById(id: string): Promise<AxiosResponse> {
     try {
       return await this.api.get(`/events/${id}`);
@@ -228,7 +267,7 @@ async getUserReviews(userId?: string): Promise<AxiosResponse> {
     }
   }
 
-  // mi perfil
+  // Jala el perfil del usuario actual
   async getMyProfile(): Promise<AxiosResponse> {
     try {
       return await this.api.get('/users/me');
@@ -238,7 +277,7 @@ async getUserReviews(userId?: string): Promise<AxiosResponse> {
     }
   }
 
-  // Actualizar perfil
+  // actualiza el perfil del usuario 
   async updateProfile(userData: any): Promise<AxiosResponse> {
     try {
       return await this.api.put('/users/me', userData);
@@ -248,7 +287,7 @@ async getUserReviews(userId?: string): Promise<AxiosResponse> {
     }
   }
 
-  // Agregar a favoritos
+  // Jala un bar y lo agrega a la lista de favoritos del usuario
   async addBarToFavorites(barId: string): Promise<AxiosResponse> {
     const userId = authService.getCurrentUser()?._id; // Usar la instancia authService
     if (!userId) throw new Error('User not authenticated');
@@ -264,17 +303,17 @@ async getUserReviews(userId?: string): Promise<AxiosResponse> {
     }
   }
 
-  // eliminar de favoritos
+  // elimia el bar de favoritos
   async removeBarFromFavorites(barId: string): Promise<AxiosResponse> {
-    const userId = authService.getCurrentUser()?._id; // Usar la instancia authService
+    const userId = authService.getCurrentUser()?._id; 
     if (!userId) throw new Error('User not authenticated');
     
     return await this.api.delete(`/users/${userId}/favorites/${barId}`);
   }
 
-  // verificar si un bar es favorito
+  // checa si el bar está en la lista de favoritos del usuario
   async isBarFavorite(barId: string): Promise<boolean> {
-    const userId = authService.getCurrentUser()?._id; // Usar la instancia authService
+    const userId = authService.getCurrentUser()?._id; 
     if (!userId) return false;
     
     try {
@@ -285,7 +324,7 @@ async getUserReviews(userId?: string): Promise<AxiosResponse> {
     }
   }
 
-  // Jala los favoritos de un usuario
+  // Jala los favoritos 
   async getFavorites(userId: string): Promise<AxiosResponse> {
     try {
       return await this.api.get(`/users/${userId}/favorites`);

@@ -3,19 +3,19 @@ import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -46,6 +46,7 @@ const colors = {
   error: '#ef4444',
   inputBackground: '#27272a',
   modalBackground: 'rgba(0, 0, 0, 0.8)',
+  overlay: 'rgba(0, 0, 0, 0.8)',
 };
 
 type AddEventScreenRouteProp = RouteProp<BusinessStackParamList, 'AddEventScreen'>;
@@ -166,6 +167,8 @@ const AddEventScreen: React.FC<AddEventScreenProps> = ({ route, navigation }) =>
   const [loading, setLoading] = useState(false);
   const [imageUrlModalVisible, setImageUrlModalVisible] = useState(false);
   const [tempImageUrl, setTempImageUrl] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdEventName, setCreatedEventName] = useState('');
   
   // Universal date picker states
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -229,22 +232,35 @@ const AddEventScreen: React.FC<AddEventScreenProps> = ({ route, navigation }) =>
 
       await BusinessService.createEvent(barId, eventData);
       
-      Alert.alert(
-        'Success',
-        'Event created successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      setCreatedEventName(form.name.trim());
+      
+      // For web/desktop, show custom success modal
+      if (Platform.OS === 'web') {
+        setShowSuccessModal(true);
+      } else {
+        // For mobile platforms, use native Alert
+        Alert.alert(
+          'Success',
+          'Event created successfully',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error creating event:', error);
       Alert.alert('Error', 'Failed to create event. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    navigation.goBack();
   };
 
   const handleImageUrl = () => {
@@ -259,274 +275,311 @@ const AddEventScreen: React.FC<AddEventScreenProps> = ({ route, navigation }) =>
     }
   };
 
+  // Success Modal Component for Web/Desktop
+  const SuccessModal = () => (
+    <Modal
+      visible={showSuccessModal}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={handleSuccessModalClose}
+    >
+      <View style={styles.successOverlay}>
+        <View style={styles.successModal}>
+          <View style={styles.successIconContainer}>
+            <Icon name="check-circle" size={64} color={colors.success} />
+          </View>
+          
+          <Text style={styles.successTitle}>Event Created Successfully!</Text>
+          
+          <Text style={styles.successMessage}>
+            "{createdEventName}" has been created for {barName}.
+          </Text>
+          
+          <TouchableOpacity
+            style={styles.successButton}
+            onPress={handleSuccessModalClose}
+          >
+            <Icon name="arrow-back" size={20} color={colors.text} />
+            <Text style={styles.successButtonText}>Return to Previous Screen</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
-      
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidingView}
-      >
-        <ScrollView style={styles.scrollView}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Icon name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Create Event</Text>
-            <View style={styles.headerRight} />
-          </View>
-
-          <View style={styles.barInfoContainer}>
-            <Text style={styles.barInfoLabel}>Creating event for:</Text>
-            <Text style={styles.barName}>{barName}</Text>
-          </View>
-
-          {/* Form */}
-          <View style={styles.formContainer}>
-            {/* Event Image URL */}
-            <View style={styles.imageSection}>
-              <Text style={styles.sectionTitle}>Event Image (Optional)</Text>
-              <View style={styles.inputGroup}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter image URL (https://...)"
-                  placeholderTextColor={colors.textMuted}
-                  value={form.image}
-                  onChangeText={(text) => setForm({ ...form, image: text })}
-                  keyboardType="url"
-                  autoCapitalize="none"
-                />
-                {errors.image && <Text style={styles.errorText}>{errors.image}</Text>}
-              </View>
-            </View>
-
-            {/* Basic Info */}
-            <View style={styles.formSection}>
-              <Text style={styles.sectionTitle}>Event Information</Text>
-              
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Event Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter event name"
-                  placeholderTextColor={colors.textMuted}
-                  value={form.name}
-                  onChangeText={(text) => setForm({ ...form, name: text })}
-                />
-                {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Description *</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Enter event description"
-                  placeholderTextColor={colors.textMuted}
-                  value={form.description}
-                  onChangeText={(text) => setForm({ ...form, description: text })}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                />
-                {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Location</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter event location (optional)"
-                  placeholderTextColor={colors.textMuted}
-                  value={form.location}
-                  onChangeText={(text) => setForm({ ...form, location: text })}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Price</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.textMuted}
-                  value={form.price}
-                  onChangeText={(text) => setForm({ ...form, price: text })}
-                  keyboardType="decimal-pad"
-                />
-                {errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
-              </View>
-            </View>
-
-            {/* Date and Time */}
-            <View style={styles.formSection}>
-              <Text style={styles.sectionTitle}>Date & Time</Text>
-              
-              {/* Start Date/Time */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Start Date & Time</Text>
-                <View style={styles.dateTimeContainer}>
-                  <TouchableOpacity
-                    style={styles.dateTimeButton}
-                    onPress={() => setShowStartDatePicker(true)}
-                  >
-                    <Icon name="calendar-today" size={20} color={colors.primary} />
-                    <Text style={styles.dateTimeText}>
-                      {form.startDate ? form.startDate.toLocaleDateString() : 'Select Date'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.dateTimeButton}
-                    onPress={() => setShowStartTimePicker(true)}
-                  >
-                    <Icon name="access-time" size={20} color={colors.primary} />
-                    <Text style={styles.dateTimeText}>
-                      {form.startDate ? form.startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select Time'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* End Date/Time */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>End Date & Time</Text>
-                <View style={styles.dateTimeContainer}>
-                  <TouchableOpacity
-                    style={styles.dateTimeButton}
-                    onPress={() => setShowEndDatePicker(true)}
-                  >
-                    <Icon name="calendar-today" size={20} color={colors.primary} />
-                    <Text style={styles.dateTimeText}>
-                      {form.endDate ? form.endDate.toLocaleDateString() : 'Select Date'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.dateTimeButton}
-                    onPress={() => setShowEndTimePicker(true)}
-                  >
-                    <Icon name="access-time" size={20} color={colors.primary} />
-                    <Text style={styles.dateTimeText}>
-                      {form.endDate ? form.endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select Time'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                {errors.endDate && <Text style={styles.errorText}>{errors.endDate}</Text>}
-              </View>
-
-              {/* Clear dates button */}
+    <>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+        
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingView}
+        >
+          <ScrollView style={styles.scrollView}>
+            {/* Header */}
+            <View style={styles.header}>
               <TouchableOpacity
-                style={styles.clearDatesButton}
-                onPress={() => setForm({ ...form, startDate: null, endDate: null })}
-              >
-                <Icon name="clear" size={16} color={colors.textMuted} />
-                <Text style={styles.clearDatesText}>Clear Dates</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Submit Button */}
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.cancelButton}
+                style={styles.backButton}
                 onPress={() => navigation.goBack()}
-                disabled={loading}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Icon name="arrow-back" size={24} color={colors.text} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <Text style={styles.submitButtonText}>Create Event</Text>
-                )}
-              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Create Event</Text>
+              <View style={styles.headerRight} />
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
 
-      {/* Universal Date/Time Pickers */}
-      <UniversalDatePicker
-        isVisible={showStartDatePicker}
-        date={form.startDate || new Date()}
-        mode="date"
-        onConfirm={(date) => {
-          const currentStartDate = form.startDate || new Date();
-          const newDate = new Date(
-            date.getFullYear(),
-            date.getMonth(),
-            date.getDate(),
-            currentStartDate.getHours(),
-            currentStartDate.getMinutes()
-          );
-          setForm({ ...form, startDate: newDate });
-          setShowStartDatePicker(false);
-        }}
-        onCancel={() => setShowStartDatePicker(false)}
-      />
+            <View style={styles.barInfoContainer}>
+              <Text style={styles.barInfoLabel}>Creating event for:</Text>
+              <Text style={styles.barName}>{barName}</Text>
+            </View>
 
-      <UniversalDatePicker
-        isVisible={showStartTimePicker}
-        date={form.startDate || new Date()}
-        mode="time"
-        onConfirm={(time) => {
-          const currentStartDate = form.startDate || new Date();
-          const newDate = new Date(
-            currentStartDate.getFullYear(),
-            currentStartDate.getMonth(),
-            currentStartDate.getDate(),
-            time.getHours(),
-            time.getMinutes()
-          );
-          setForm({ ...form, startDate: newDate });
-          setShowStartTimePicker(false);
-        }}
-        onCancel={() => setShowStartTimePicker(false)}
-      />
+            {/* Form */}
+            <View style={styles.formContainer}>
+              {/* Event Image URL */}
+              <View style={styles.imageSection}>
+                <Text style={styles.sectionTitle}>Event Image (Optional)</Text>
+                <View style={styles.inputGroup}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter image URL (https://...)"
+                    placeholderTextColor={colors.textMuted}
+                    value={form.image}
+                    onChangeText={(text) => setForm({ ...form, image: text })}
+                    keyboardType="url"
+                    autoCapitalize="none"
+                  />
+                  {errors.image && <Text style={styles.errorText}>{errors.image}</Text>}
+                </View>
+              </View>
 
-      <UniversalDatePicker
-        isVisible={showEndDatePicker}
-        date={form.endDate || new Date()}
-        mode="date"
-        onConfirm={(date) => {
-          const currentEndDate = form.endDate || new Date();
-          const newDate = new Date(
-            date.getFullYear(),
-            date.getMonth(),
-            date.getDate(),
-            currentEndDate.getHours(),
-            currentEndDate.getMinutes()
-          );
-          setForm({ ...form, endDate: newDate });
-          setShowEndDatePicker(false);
-        }}
-        onCancel={() => setShowEndDatePicker(false)}
-      />
+              {/* Basic Info */}
+              <View style={styles.formSection}>
+                <Text style={styles.sectionTitle}>Event Information</Text>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Event Name *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter event name"
+                    placeholderTextColor={colors.textMuted}
+                    value={form.name}
+                    onChangeText={(text) => setForm({ ...form, name: text })}
+                  />
+                  {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+                </View>
 
-      <UniversalDatePicker
-        isVisible={showEndTimePicker}
-        date={form.endDate || new Date()}
-        mode="time"
-        onConfirm={(time) => {
-          const currentEndDate = form.endDate || new Date();
-          const newDate = new Date(
-            currentEndDate.getFullYear(),
-            currentEndDate.getMonth(),
-            currentEndDate.getDate(),
-            time.getHours(),
-            time.getMinutes()
-          );
-          setForm({ ...form, endDate: newDate });
-          setShowEndTimePicker(false);
-        }}
-        onCancel={() => setShowEndTimePicker(false)}
-      />
-    </SafeAreaView>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Description *</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    placeholder="Enter event description"
+                    placeholderTextColor={colors.textMuted}
+                    value={form.description}
+                    onChangeText={(text) => setForm({ ...form, description: text })}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                  {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Location</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter event location (optional)"
+                    placeholderTextColor={colors.textMuted}
+                    value={form.location}
+                    onChangeText={(text) => setForm({ ...form, location: text })}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Price</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0.00"
+                    placeholderTextColor={colors.textMuted}
+                    value={form.price}
+                    onChangeText={(text) => setForm({ ...form, price: text })}
+                    keyboardType="decimal-pad"
+                  />
+                  {errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
+                </View>
+              </View>
+
+              {/* Date and Time */}
+              <View style={styles.formSection}>
+                <Text style={styles.sectionTitle}>Date & Time</Text>
+                
+                {/* Start Date/Time */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Start Date & Time</Text>
+                  <View style={styles.dateTimeContainer}>
+                    <TouchableOpacity
+                      style={styles.dateTimeButton}
+                      onPress={() => setShowStartDatePicker(true)}
+                    >
+                      <Icon name="calendar-today" size={20} color={colors.primary} />
+                      <Text style={styles.dateTimeText}>
+                        {form.startDate ? form.startDate.toLocaleDateString() : 'Select Date'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.dateTimeButton}
+                      onPress={() => setShowStartTimePicker(true)}
+                    >
+                      <Icon name="access-time" size={20} color={colors.primary} />
+                      <Text style={styles.dateTimeText}>
+                        {form.startDate ? form.startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select Time'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* End Date/Time */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>End Date & Time</Text>
+                  <View style={styles.dateTimeContainer}>
+                    <TouchableOpacity
+                      style={styles.dateTimeButton}
+                      onPress={() => setShowEndDatePicker(true)}
+                    >
+                      <Icon name="calendar-today" size={20} color={colors.primary} />
+                      <Text style={styles.dateTimeText}>
+                        {form.endDate ? form.endDate.toLocaleDateString() : 'Select Date'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.dateTimeButton}
+                      onPress={() => setShowEndTimePicker(true)}
+                    >
+                      <Icon name="access-time" size={20} color={colors.primary} />
+                      <Text style={styles.dateTimeText}>
+                        {form.endDate ? form.endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select Time'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  {errors.endDate && <Text style={styles.errorText}>{errors.endDate}</Text>}
+                </View>
+
+                {/* Clear dates button */}
+                <TouchableOpacity
+                  style={styles.clearDatesButton}
+                  onPress={() => setForm({ ...form, startDate: null, endDate: null })}
+                >
+                  <Icon name="clear" size={16} color={colors.textMuted} />
+                  <Text style={styles.clearDatesText}>Clear Dates</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Submit Button */}
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => navigation.goBack()}
+                  disabled={loading}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={handleSubmit}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color={colors.text} />
+                  ) : (
+                    <Text style={styles.submitButtonText}>Create Event</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Universal Date/Time Pickers */}
+        <UniversalDatePicker
+          isVisible={showStartDatePicker}
+          date={form.startDate || new Date()}
+          mode="date"
+          onConfirm={(date) => {
+            const currentStartDate = form.startDate || new Date();
+            const newDate = new Date(
+              date.getFullYear(),
+              date.getMonth(),
+              date.getDate(),
+              currentStartDate.getHours(),
+              currentStartDate.getMinutes()
+            );
+            setForm({ ...form, startDate: newDate });
+            setShowStartDatePicker(false);
+          }}
+          onCancel={() => setShowStartDatePicker(false)}
+        />
+
+        <UniversalDatePicker
+          isVisible={showStartTimePicker}
+          date={form.startDate || new Date()}
+          mode="time"
+          onConfirm={(time) => {
+            const currentStartDate = form.startDate || new Date();
+            const newDate = new Date(
+              currentStartDate.getFullYear(),
+              currentStartDate.getMonth(),
+              currentStartDate.getDate(),
+              time.getHours(),
+              time.getMinutes()
+            );
+            setForm({ ...form, startDate: newDate });
+            setShowStartTimePicker(false);
+          }}
+          onCancel={() => setShowStartTimePicker(false)}
+        />
+
+        <UniversalDatePicker
+          isVisible={showEndDatePicker}
+          date={form.endDate || new Date()}
+          mode="date"
+          onConfirm={(date) => {
+            const currentEndDate = form.endDate || new Date();
+            const newDate = new Date(
+              date.getFullYear(),
+              date.getMonth(),
+              date.getDate(),
+              currentEndDate.getHours(),
+              currentEndDate.getMinutes()
+            );
+            setForm({ ...form, endDate: newDate });
+            setShowEndDatePicker(false);
+          }}
+          onCancel={() => setShowEndDatePicker(false)}
+        />
+
+        <UniversalDatePicker
+          isVisible={showEndTimePicker}
+          date={form.endDate || new Date()}
+          mode="time"
+          onConfirm={(time) => {
+            const currentEndDate = form.endDate || new Date();
+            const newDate = new Date(
+              currentEndDate.getFullYear(),
+              currentEndDate.getMonth(),
+              currentEndDate.getDate(),
+              time.getHours(),
+              time.getMinutes()
+            );
+            setForm({ ...form, endDate: newDate });
+            setShowEndTimePicker(false);
+          }}
+          onCancel={() => setShowEndTimePicker(false)}
+        />
+      </SafeAreaView>
+
+      {/* Success Modal for Web/Desktop */}
+      <SuccessModal />
+    </>
   );
 };
 
@@ -732,6 +785,57 @@ const styles = StyleSheet.create({
   },
   webDatePickerConfirmText: {
     color: colors.text,
+  },
+  // Success Modal Styles
+  successOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  successModal: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 32,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  successButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    minWidth: 200,
+  },
+  successButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 8,
   },
 });
 

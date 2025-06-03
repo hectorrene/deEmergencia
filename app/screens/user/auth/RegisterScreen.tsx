@@ -73,6 +73,11 @@ const UniversalDatePicker: React.FC<{
 }> = ({ isVisible, date, onConfirm, onCancel, maximumDate }) => {
   const [tempDate, setTempDate] = useState(date);
 
+  // Update tempDate when date prop changes
+  useEffect(() => {
+    setTempDate(date);
+  }, [date]);
+
   if (!isVisible) return null;
 
   if (isWeb || Platform.OS === 'web') {
@@ -123,12 +128,12 @@ const UniversalDatePicker: React.FC<{
     <DateTimePicker
       value={tempDate}
       mode="date"
-      display="default"
+      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
       maximumDate={maximumDate}
       onChange={(event, selectedDate) => {
-        if (selectedDate) {
+        if (event.type === 'set' && selectedDate) {
           onConfirm(selectedDate);
-        } else {
+        } else if (event.type === 'dismissed') {
           onCancel();
         }
       }}
@@ -305,6 +310,20 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     return today;
   };
 
+  // Get current date for date picker
+  const getCurrentDateForPicker = (): Date => {
+    if (formData.birthDate) {
+      const date = new Date(formData.birthDate);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+    // Default to 25 years ago
+    const defaultDate = new Date();
+    defaultDate.setFullYear(defaultDate.getFullYear() - 25);
+    return defaultDate;
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
@@ -323,23 +342,28 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
         />
         
         <SafeAreaView style={styles.safeArea}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Icon name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
           <KeyboardAvoidingView
             style={styles.keyboardAvoid}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           >
-            {/* Header */}
-            <View style={styles.header}>
-              <TouchableOpacity 
-                style={styles.backButton}
-                onPress={() => navigation.goBack()}
-              >
-                <Icon name="arrow-back" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
             <ScrollView 
+              style={styles.scrollView}
               contentContainerStyle={styles.scrollContainer}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              bounces={true}
+              scrollEventThrottle={16}
             >
               <Animated.View 
                 style={[
@@ -450,6 +474,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                         errors.birthDate && styles.inputWrapperError
                       ]}
                       onPress={() => setShowDatePicker(true)}
+                      activeOpacity={0.7}
                     >
                       <Icon name="cake" size={20} color={colors.textMuted} style={styles.inputIcon} />
                       <Text style={[
@@ -500,6 +525,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                           formData.accountType === 'user' && styles.accountTypeButtonActive
                         ]}
                         onPress={() => handleInputChange('accountType', 'user')}
+                        activeOpacity={0.7}
                       >
                         <Icon 
                           name="person" 
@@ -520,6 +546,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                           formData.accountType === 'business' && styles.accountTypeButtonActive
                         ]}
                         onPress={() => handleInputChange('accountType', 'business')}
+                        activeOpacity={0.7}
                       >
                         <Icon 
                           name="business" 
@@ -559,6 +586,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                       <TouchableOpacity
                         onPress={() => setShowPassword(!showPassword)}
                         style={styles.eyeButton}
+                        activeOpacity={0.7}
                       >
                         <Icon 
                           name={showPassword ? "visibility-off" : "visibility"} 
@@ -598,6 +626,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                       <TouchableOpacity
                         onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                         style={styles.eyeButton}
+                        activeOpacity={0.7}
                       >
                         <Icon 
                           name={showConfirmPassword ? "visibility-off" : "visibility"} 
@@ -636,7 +665,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                   {/* Login Link */}
                   <View style={styles.linkContainer}>
                     <Text style={styles.linkText}>¿Ya tienes cuenta? </Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                    <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.7}>
                       <Text style={styles.link}>Inicia sesión aquí</Text>
                     </TouchableOpacity>
                   </View>
@@ -648,13 +677,15 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       </ImageBackground>
 
       {/* Universal DatePicker */}
-      <UniversalDatePicker
-        isVisible={showDatePicker}
-        date={formData.birthDate ? new Date(formData.birthDate) : new Date(1990, 0, 1)}
-        maximumDate={getMaximumDate()}
-        onConfirm={handleDateSelect}
-        onCancel={() => setShowDatePicker(false)}
-      />
+      {showDatePicker && (
+        <UniversalDatePicker
+          isVisible={showDatePicker}
+          date={getCurrentDateForPicker()}
+          maximumDate={getMaximumDate()}
+          onConfirm={handleDateSelect}
+          onCancel={() => setShowDatePicker(false)}
+        />
+      )}
     </View>
   );
 };
@@ -675,12 +706,10 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  keyboardAvoid: {
-    flex: 1,
-  },
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
+    paddingBottom: 8,
   },
   backButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -688,14 +717,21 @@ const styles = StyleSheet.create({
     padding: 8,
     alignSelf: 'flex-start',
   },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
   contentContainer: {
     alignItems: 'center',
+    width: '100%',
   },
   logoSection: {
     alignItems: 'center',
@@ -773,6 +809,7 @@ const styles = StyleSheet.create({
     borderColor: colors.inputBorder,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    minHeight: 48,
   },
   inputWrapperFocused: {
     borderColor: colors.inputFocused,
@@ -789,9 +826,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     paddingVertical: 0,
+    minHeight: 20,
   },
   eyeButton: {
     padding: 4,
+    marginLeft: 8,
   },
   helperText: {
     fontSize: 12,
@@ -834,6 +873,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 12,
     gap: 8,
+    minHeight: 48,
   },
   accountTypeButtonActive: {
     backgroundColor: colors.primary,
@@ -861,6 +901,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     gap: 8,
+    minHeight: 48,
   },
   buttonText: {
     color: colors.text,
@@ -876,6 +917,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+    paddingBottom: 8,
   },
   linkText: {
     color: colors.textSecondary,
@@ -926,6 +968,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     outline: 'none',
     fontFamily: 'inherit',
+    border: `1px solid ${colors.inputBorder}`,
     ...Platform.select({
       web: {
         '&:focus': {
@@ -934,7 +977,7 @@ const styles = StyleSheet.create({
         },
       },
     }),
-  },
+  } as any,
   webDatePickerButtons: {
     flexDirection: 'row',
     gap: 12,

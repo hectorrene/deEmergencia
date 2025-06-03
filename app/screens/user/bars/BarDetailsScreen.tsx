@@ -85,8 +85,10 @@ interface Review {
 interface Event {
   _id: string;
   title: string;
+  name?: string;  // Added for better event naming
   description: string;
-  date: string;
+  start: string; // ISO date string
+  end?: string; // Optional end date
   time?: string;
 }
 
@@ -227,6 +229,37 @@ const BarDetailsScreen: React.FC<BarDetailsScreenProps> = ({ route, navigation }
     return stars;
   };
 
+  // Enhanced date formatting functions
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', { 
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  const getDaysDifference = (dateString: string) => {
+    const eventDate = new Date(dateString);
+    const today = new Date();
+    const diffTime = eventDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Mañana';
+    if (diffDays > 0) return `En ${diffDays} días`;
+    return 'Evento pasado';
+  };
+
   const handleMenuItemPress = (menuItem: MenuItem) => {
     navigation.navigate('MenuItem', { 
       itemId: menuItem._id,
@@ -241,15 +274,6 @@ const BarDetailsScreen: React.FC<BarDetailsScreenProps> = ({ route, navigation }
       case 'alcohol': return 'wine-bar';
       default: return 'restaurant-menu';
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    });
   };
 
 const renderTabContent = () => {
@@ -312,14 +336,36 @@ const renderTabContent = () => {
               <View key={event._id} style={styles.eventCard}>
                 <View style={styles.eventHeader}>
                   <View style={styles.eventDateBadge}>
-                    <Text style={styles.eventDateText}>{formatDate(event.date)}</Text>
-                    {event.time && (
-                      <Text style={styles.eventTimeText}>{event.time}</Text>
-                    )}
+                    <Text style={styles.eventDateText}>{getDaysDifference(event.start)}</Text>
                   </View>
                   <Icon name="event" size={24} color={colors.primary} />
                 </View>
-                <Text style={styles.eventTitle}>{event.title}</Text>
+                
+                {/* Título del evento */}
+                <Text style={styles.eventTitle}>
+                  {event.name || event.title}
+                </Text>
+                
+                {/* Información de fecha y hora */}
+                <View style={styles.eventDetailsContainer}>
+                  <View style={styles.eventDetailRow}>
+                    <Icon name="calendar-today" size={16} color={colors.textMuted} />
+                    <Text style={styles.eventDetailText}>
+                      {formatDate(event.start)}
+                    </Text>
+                  </View>
+                  
+                  {event.time && (
+                    <View style={styles.eventDetailRow}>
+                      <Icon name="access-time" size={16} color={colors.textMuted} />
+                      <Text style={styles.eventDetailText}>
+                        {event.time}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                
+                {/* Descripción */}
                 <Text style={styles.eventDescription}>{event.description}</Text>
               </View>
             ))
@@ -1078,6 +1124,23 @@ writeReviewButton: {
     fontWeight: '600',
     marginRight: 8,
   },
+
+
+eventDetailsContainer: {
+  marginBottom: 12,
+},
+
+eventDetailRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 4,
+},
+
+eventDetailText: {
+  fontSize: 14,
+  color: colors.textSecondary,
+  marginLeft: 8,
+},
 });
 
 export { BarDetailsScreen };

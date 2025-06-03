@@ -25,10 +25,7 @@ interface BusinessProtectedRouteProps {
   showUpgradeOption?: boolean;
 }
 
-/**
- * Componente que protege las rutas de business
- * Solo permite acceso a usuarios con accountType === 'business'
- */
+// rutas de business
 const BusinessProtectedRoute: React.FC<BusinessProtectedRouteProps> = ({
   children,
   fallbackMessage = "Esta función está disponible solo para cuentas de negocio",
@@ -42,7 +39,7 @@ const BusinessProtectedRoute: React.FC<BusinessProtectedRouteProps> = ({
   console.log('🛡️ IsAuthenticated:', isAuthenticated);
   console.log('🛡️ User accountType:', user?.accountType);
 
-  // Si está cargando, mostrar mensaje de carga
+  // mostrar mensaje de carga
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -54,7 +51,7 @@ const BusinessProtectedRoute: React.FC<BusinessProtectedRouteProps> = ({
     );
   }
 
-  // Si no está autenticado, mostrar mensaje de login
+  // Si no está autenticado mostrar mensaje de login
   if (!isAuthenticated || !user) {
     return (
       <View style={styles.container}>
@@ -69,7 +66,7 @@ const BusinessProtectedRoute: React.FC<BusinessProtectedRouteProps> = ({
     );
   }
 
-  // ✅ VERIFICACIÓN PRINCIPAL: Solo usuarios business pueden acceder
+  // solo usuarios business pueden acceder
   if (user.accountType !== 'business') {
     return (
       <View style={styles.container}>
@@ -106,8 +103,7 @@ const BusinessProtectedRoute: React.FC<BusinessProtectedRouteProps> = ({
     );
   }
 
-  // ✅ Si es usuario business, mostrar el contenido protegido
-  console.log('🛡️ BusinessProtectedRoute - Access granted for business user');
+  // si es usuario business, mostrar el contenido protegido
   return <>{children}</>;
 };
 
